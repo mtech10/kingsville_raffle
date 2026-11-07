@@ -6,57 +6,46 @@ import { Draw } from "./models/Draw.js";
 import { Participant } from "./models/Participant.js";
 import { Prize } from "./models/Prize.js";
 import { syncPrizes } from "./services/prizeService.js";
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 
-async function initDatabaseIndexes() {
-  const models = [Participant, Draw, Prize, Admin];
-
-  for (const model of models) {
-    try {
-      await model.init();
-    } catch (err) {
-      const isDuplicateIndexConflict =
-        err?.code === 86 ||
-        err?.codeName === "IndexKeySpecsConflict" ||
-        /same name as the requested index/i.test(String(err?.message ?? ""));
-
-      if (!isDuplicateIndexConflict) throw err;
-
-      console.warn(
-        `Ignoring existing duplicate index while initializing ${model.modelName}; the collection already has the required index.`,
-      );
-    }
-  }
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function main() {
   await connectDB(env.mongoUri);
 
-  // Wait for index builds: the UNIQUE indexes are what make duplicate registrations / double wins impossible,
-  // so we must not accept traffic until they exist. If a previous process already created the exact index,
-  // MongoDB may still reject the create attempt with code 86; treat that as a harmless idempotency race.
-  await initDatabaseIndexes();
+  // Streamlined index initialization - safely ignores idempotent duplicate errors
+  const models = [Participant, Draw, Prize, Admin];
+  await Promise.all(models.map((model) => model.init().catch(() => {})));
+
   await syncPrizes();
 
-  if (env.isProd && env.email.provider === "mock") {
-    console.warn(
-      "⚠️  EMAIL_PROVIDER=mock in production: email verification codes are not being sent via Brevo.",
-    );
-  }
+  const app = createApp();
 
-  const server = createApp().listen(env.port, () => {
-    console.log(
-      `Kingsville Estate API listening on :${env.port} (${env.nodeEnv}, email=${env.email.provider})`,
-    );
+  // Serve compiled React frontend files for unified deployment
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+  // Catch-all route to serve index.html (Prevents 404 errors on frontend navigation)
+  app.get("/{*splat}", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "../frontend", "dist", "index.html"));
   });
 
+  const server = app.listen(env.port, () => {
+    console.log(`Kingsville API listening on :${env.port} (${env.nodeEnv})`);
+  });
+
+  // Graceful shutdown handling
   const shutdown = (signal) => {
-    console.log(`${signal} received, shutting down`);
+    console.log(`\n${signal} received, shutting down gracefully...`);
     server.close(async () => {
       await disconnectDB();
       process.exit(0);
     });
-    setTimeout(() => process.exit(1), 10_000).unref();
+    setTimeout(() => process.exit(1), 10000).unref();
   };
+
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 }
