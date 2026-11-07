@@ -9,11 +9,13 @@ import { syncPrizes } from "./services/prizeService.js";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function main() {
+  // 1. Initialize Database
   await connectDB(env.mongoUri);
 
   // Streamlined index initialization - safely ignores idempotent duplicate errors
@@ -22,23 +24,40 @@ async function main() {
 
   await syncPrizes();
 
+  // 2. Initialize Express App
   const app = createApp();
 
-  // Serve compiled React frontend files for unified deployment
-  app.use(express.static(path.join(__dirname, "../../frontend/dist")));
+  // 3. Serve Compiled React Frontend
+  // Auto-detect frontend folder (Vite uses 'dist', CRA uses 'build')
+  const distPath = path.resolve(__dirname, "../../frontend/dist");
+  const buildPath = path.resolve(__dirname, "../../frontend/build");
+  const frontendPath = fs.existsSync(buildPath) ? buildPath : distPath;
+
+  // Serve compiled React frontend files
+  app.use(express.static(frontendPath));
 
   // Catch-all route to serve index.html (Express v5 syntax)
   app.get("/{*splat}", (req, res) => {
-    res.sendFile(
-      path.resolve(__dirname, "../../frontend", "dist", "index.html"),
-    );
+    const indexPath = path.join(frontendPath, "index.html");
+
+    // Prevent server crash if Render fails to build the frontend
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res
+        .status(404)
+        .send(
+          "Frontend build missing! Trigger a 'Clear build cache & deploy' in your Render dashboard.",
+        );
+    }
   });
 
+  // 4. Start Server
   const server = app.listen(env.port, () => {
     console.log(`Kingsville API listening on :${env.port} (${env.nodeEnv})`);
   });
 
-  // Graceful shutdown handling
+  // 5. Graceful shutdown handling
   const shutdown = (signal) => {
     console.log(`\n${signal} received, shutting down gracefully...`);
     server.close(async () => {
