@@ -25,11 +25,13 @@ async function main() {
   const app = createApp();
 
   // Serve compiled React frontend files for unified deployment
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+  app.use(express.static(path.join(__dirname, "../../frontend/dist")));
 
-  // Catch-all route to serve index.html (Prevents 404 errors on frontend navigation)
+  // Catch-all route to serve index.html (Express v5 syntax)
   app.get("/{*splat}", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "../frontend", "dist", "index.html"));
+    res.sendFile(
+      path.resolve(__dirname, "../../frontend", "dist", "index.html"),
+    );
   });
 
   const server = app.listen(env.port, () => {
