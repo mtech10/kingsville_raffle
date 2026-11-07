@@ -1,0 +1,23 @@
+# Dependency folders
+node_modules/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+npm-debug.log*
+*.log
+
+# Build/runtime outputs
+coverage/
+dist/
+.tmp/
+*.tmp
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+
+# Local project data
+/seedParticipants.js
