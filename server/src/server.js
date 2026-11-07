@@ -28,26 +28,26 @@ async function main() {
   const app = createApp();
 
   // 3. Serve Compiled React Frontend
-  // Auto-detect frontend folder (Vite uses 'dist', CRA uses 'build')
-  const distPath = path.resolve(__dirname, "../../frontend/dist");
-  const buildPath = path.resolve(__dirname, "../../frontend/build");
+  // Auto-detect client folder (Vite uses 'dist', CRA uses 'build')
+  const distPath = path.resolve(__dirname, "../../client/dist");
+  const buildPath = path.resolve(__dirname, "../../client/build");
   const frontendPath = fs.existsSync(buildPath) ? buildPath : distPath;
 
-  // Serve compiled React frontend files
+  // Serve compiled React client files
   app.use(express.static(frontendPath));
 
   // Catch-all route to serve index.html (Express v5 syntax)
   app.get("/{*splat}", (req, res) => {
     const indexPath = path.join(frontendPath, "index.html");
 
-    // Prevent server crash if Render fails to build the frontend
+    // Prevent server crash if Render fails to build the client
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
     } else {
       res
         .status(404)
         .send(
-          "Frontend build missing! Trigger a 'Clear build cache & deploy' in your Render dashboard.",
+          "Client build missing! Trigger a 'Clear build cache & deploy' in your Render dashboard.",
         );
     }
   });
