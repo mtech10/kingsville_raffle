@@ -16,10 +16,11 @@ export const PRIZES = [
     image: "/prizes/fan.jpg",
     alt: "White desk fan turned on",
   },
+
   {
-    name: "Microwave",
-    image: "/prizes/microwave.avif",
-    alt: "Person taking a pizza out of a toaster oven",
+    name: "Air Fryer",
+    image: "/prizes/air-fryer.jpg",
+    alt: "Person taking a meat out of an air-dryer oven",
   },
   {
     name: "Blender",
