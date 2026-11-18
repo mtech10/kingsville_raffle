@@ -36,7 +36,10 @@ const participantSchema = new Schema(
 
 participantSchema.index({ phone: 1 }, { unique: true, name: 'uniq_phone' });
 participantSchema.index({ email: 1 }, { unique: true, name: 'uniq_email' });
-participantSchema.index({ ticketSeq: 1 }, { unique: true, sparse: true, name: 'uniq_ticketSeq' });
+participantSchema.index(
+  { ticketSeq: 1 },
+  { unique: true, partialFilterExpression: { ticketSeq: { $type: 'number' } }, name: 'uniq_ticketSeq' },
+);
 participantSchema.index({ nameTokens: 1 }, { name: 'name_tokens' });
 participantSchema.index({ nameLower: 1, ticketSeq: 1 }, { name: 'name_sort' });
 participantSchema.index({ status: 1, ticketSeq: 1 }, { name: 'status_ticket' });

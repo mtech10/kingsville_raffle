@@ -78,6 +78,45 @@ describe('Kingsville API (real MongoDB)', { skip: skipReason ?? false }, () => {
     assert.match(participant.verificationCode, /^\d{4}$/);
   });
 
+  test('migrates the ticket index and permits null sequences without weakening ticket uniqueness', async () => {
+    const { Participant } = await import('../src/models/Participant.js');
+    const { ensureTicketSeqIndex } = await import('../src/services/ticketService.js');
+
+    await Participant.collection.dropIndex('uniq_ticketSeq');
+    await Participant.collection.createIndex(
+      { ticketSeq: 1 },
+      { unique: true, sparse: true, name: 'uniq_ticketSeq' },
+    );
+
+    const legacy = person(70);
+    await Participant.collection.insertOne({
+      name: legacy.name,
+      nameLower: legacy.name.toLowerCase(),
+      nameTokens: legacy.name.toLowerCase().split(' '),
+      phone: legacy.phone,
+      email: legacy.email,
+      ticketSeq: null,
+    });
+
+    await ensureTicketSeqIndex();
+
+    const secondPending = person(71);
+    await Participant.collection.insertOne({
+      name: secondPending.name,
+      nameLower: secondPending.name.toLowerCase(),
+      nameTokens: secondPending.name.toLowerCase().split(' '),
+      phone: secondPending.phone,
+      email: secondPending.email,
+      ticketSeq: null,
+    });
+
+    await Participant.collection.insertOne({ ...person(72), ticketSeq: 1 });
+    await assert.rejects(
+      Participant.collection.insertOne({ ...person(73), ticketSeq: 1 }),
+      (err) => err.code === 11000,
+    );
+  });
+
   test('rejects a duplicate phone number and duplicate email', async () => {
     const p = person(2);
     await post('/register', p);

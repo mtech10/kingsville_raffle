@@ -6,6 +6,7 @@ import { Draw } from "./models/Draw.js";
 import { Participant } from "./models/Participant.js";
 import { Prize } from "./models/Prize.js";
 import { syncPrizes } from "./services/prizeService.js";
+import { ensureTicketSeqIndex } from "./services/ticketService.js";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -17,6 +18,8 @@ const __dirname = path.dirname(__filename);
 async function main() {
   // 1. Initialize Database
   await connectDB(env.mongoUri);
+
+  await ensureTicketSeqIndex();
 
   // Streamlined index initialization - safely ignores idempotent duplicate errors
   const models = [Participant, Draw, Prize, Admin];

@@ -1,6 +1,37 @@
 import { Counter } from '../models/Counter.js';
 import { Participant } from '../models/Participant.js';
 
+export async function ensureTicketSeqIndex() {
+  let indexes = [];
+  try {
+    indexes = await Participant.collection.indexes();
+  } catch (err) {
+    if (err?.code !== 26 && err?.codeName !== 'NamespaceNotFound') throw err;
+  }
+
+  for (const index of indexes) {
+    const isTicketSeqIndex =
+      Object.keys(index.key || {}).length === 1 && index.key.ticketSeq === 1;
+    const isCurrentIndex =
+      index.name === 'uniq_ticketSeq' &&
+      index.unique === true &&
+      index.partialFilterExpression?.ticketSeq?.$type === 'number';
+
+    if (isTicketSeqIndex && !isCurrentIndex) {
+      await Participant.collection.dropIndex(index.name);
+    }
+  }
+
+  await Participant.collection.createIndex(
+    { ticketSeq: 1 },
+    {
+      unique: true,
+      partialFilterExpression: { ticketSeq: { $type: 'number' } },
+      name: 'uniq_ticketSeq',
+    },
+  );
+}
+
 /**
  * Resyncs the counter with the largest ticket already issued, then returns the next number
  * in sequence. This guards against stale counters created before a reset, import, or a
